@@ -1,24 +1,21 @@
-from typing import Dict, Any
 from utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 
-
 class MessageBus:
     def __init__(self):
-        self.agents: Dict[str, Any] = {}
+        self.agents = {}
 
-    def register(self, agent) -> None:
+    def register(self, agent):
         self.agents[agent.agent_id] = agent
 
-    def deliver(self, message: Dict[str, Any]) -> None:
-        recipient = message.get("recipient")
-        if agent := self.agents.get(recipient):
+    def deliver(self, message):
+        if agent := self.agents.get(message.get("recipient")):
             agent.receive_message(message)
         else:
-            logger.warning(f"Unknown recipient: {recipient}")
+            logger.warning(f"Unknown recipient: {message.get('recipient')}")
 
-    def broadcast(self, message: Dict[str, Any]) -> None:
+    def broadcast(self, message):
         sender = message.get("sender")
         for agent_id, agent in self.agents.items():
             if agent_id != sender:

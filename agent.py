@@ -1,106 +1,56 @@
-from typing import Dict, Any, List, Optional, Callable
 from utils.logging_config import setup_logger, log_with_agent_id
 
 logger = setup_logger(__name__)
 
-
 class Agent:
-    def __init__(self, agent_id: str, message_bus=None, max_context: int = 100):
+    def __init__(self, agent_id, message_bus=None, max_context=100):
         self.agent_id = agent_id
-        self.context: List[Dict[str, Any]] = []
-        self.max_context = max_context
+        self.context = []
+        self._max_context = max_context
         self.message_bus = message_bus
-        self.task_routes = self._init_task_routes()
+        self.task_routes = {"ping": self.handle_ping, "process_data": self.handle_process_data}
 
-    def _init_task_routes(self) -> Dict[str, Callable]:
-        return {
-            "ping": self.handle_ping,
-            "process_data": self.handle_process_data,
-        }
-
-    def send_message(self, recipient: str, task: str, payload: Dict[str, Any]) -> None:
-        message = {
-            "sender": self.agent_id,
-            "recipient": recipient,
-            "task": task,
-            "payload": payload,
-        }
-
+    def send_message(self, recipient, task, payload):
         if not self.message_bus:
             raise RuntimeError("No message bus available to send message")
+        self.message_bus.deliver({"sender": self.agent_id, "recipient": recipient, "task": task, "payload": payload})
 
-        self.message_bus.deliver(message)
-
-    def receive_message(self, message: Dict[str, Any]) -> None:
-        required_fields = ("sender", "recipient", "task")
-        if not all(field in message for field in required_fields):
-            log_with_agent_id(
-                logger,
-                self.agent_id,
-                logger.WARNING,
-                f"Invalid message format: {message}",
-            )
+    def receive_message(self, message):
+        if not all(field in message for field in ("sender", "recipient", "task")):
+            log_with_agent_id(logger, self.agent_id, logger.WARNING, f"Invalid message format: {message}")
             return
-
         if message["recipient"] != self.agent_id:
-            log_with_agent_id(
-                logger,
-                self.agent_id,
-                logger.WARNING,
-                f"Message not for this agent: {message['recipient']}",
-            )
+            log_with_agent_id(logger, self.agent_id, logger.WARNING, f"Message not for this agent: {message['recipient']}")
             return
 
-        # Efficient context management
-        if len(self.context) >= self.max_context:
-            self.context.pop(0)
         self.context.append(message)
-
-        task, payload, sender = (
-            message["task"],
-            message.get("payload", {}),
-            message["sender"],
-        )
-        log_with_agent_id(
-            logger,
-            self.agent_id,
-            logger.INFO,
-            f"received task '{task}' from {sender} with payload: {payload}",
-        )
+        if len(self.context) > self._max_context:
+            self.context = self.context[-self._max_context:]
+        
+        task, payload, sender = message["task"], message.get("payload", {}), message["sender"]
+        log_with_agent_id(logger, self.agent_id, logger.INFO, f"received task '{task}' from {sender} with payload: {payload}")
 
         if handler := self.task_routes.get(task):
             try:
                 handler(sender, payload)
-            except (ValueError, TypeError) as e:
-                log_with_agent_id(
-                    logger,
-                    self.agent_id,
-                    logger.ERROR,
-                    f"Invalid data in task '{task}': {e}",
-                )
             except Exception as e:
-                log_with_agent_id(
-                    logger, self.agent_id, logger.ERROR, f"Error in task '{task}': {e}"
-                )
+                error_type = "Invalid data" if isinstance(e, (ValueError, TypeError)) else "Error"
+                log_with_agent_id(logger, self.agent_id, logger.ERROR, f"{error_type} in task '{task}': {e}")
         else:
             self.handle_unknown_task(task, payload)
 
-    def handle_ping(self, sender: str, payload: Dict[str, Any]) -> None:
+    def handle_ping(self, sender, payload):
         if sender == self.agent_id:
-            log_with_agent_id(
-                logger, self.agent_id, logger.INFO, "Task sent to self, ignoring."
-            )
+            log_with_agent_id(logger, self.agent_id, logger.INFO, "Task sent to self, ignoring.")
             return
         self.send_message(sender, "pong", {"status": "alive"})
 
-    def handle_process_data(self, sender: str, payload: Dict[str, Any]) -> None:
-        self.send_message(
-            sender, "data_processed", {"result": self.process_data(payload)}
-        )
+    def handle_process_data(self, sender, payload):
+        self.send_message(sender, "data_processed", {"result": self.process_data(payload)})
 
-    def handle_unknown_task(self, task: str, payload: Dict[str, Any]) -> None:
+    def handle_unknown_task(self, task, payload):
         log_with_agent_id(logger, self.agent_id, logger.INFO, f"Unknown task: {task}")
 
-    def process_data(self, payload: Dict[str, Any]) -> Dict[str, str]:
+    def process_data(self, payload):
         item_count = len(payload) if isinstance(payload, (list, tuple, dict)) else 0
         return {"summary": f"Processed {item_count} items"}
