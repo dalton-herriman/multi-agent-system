@@ -1,9 +1,7 @@
 import logging
 
-# Create module-specific logger
 logger = logging.getLogger(__name__)
 
-# Configure logger only if not already configured
 if not logger.handlers:
     handler = logging.StreamHandler()
     formatter = logging.Formatter(
@@ -43,7 +41,6 @@ class Agent:
             raise RuntimeError(f"No message bus available to send message")
 
     def receive_message(self, message):
-        # Validate message
         if not all(field in message for field in ("sender", "recipient", "task")):
             logger.warning(f"[{self.agent_id}] Invalid message format: {message}")
             return
@@ -54,7 +51,6 @@ class Agent:
             )
             return
 
-        # Process message
         if len(self.context) >= self.max_context:
             self.context.pop(0)
         self.context.append(message)
