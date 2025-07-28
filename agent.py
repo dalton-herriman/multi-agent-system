@@ -46,6 +46,9 @@ class Agent:
             self.handle_unknown_task(task, payload)
 
     def handle_ping(self, sender, payload):
+        if sender == self.agent_id:
+            print(f"[{self.agent_id}] Ignoring ping from self.")
+            return
         self.send_message(sender, "pong", {"status": "alive"})
 
     def handle_process_data(self, sender, payload):
