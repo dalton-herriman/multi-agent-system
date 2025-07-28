@@ -1,3 +1,8 @@
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+
 class Agent:
     def __init__(self, agent_id, message_bus=None, max_context=100):
         self.agent_id = agent_id
@@ -23,31 +28,43 @@ class Agent:
         if self.message_bus:
             self.message_bus.deliver(message)
         else:
+            logging.error(f"[{self.agent_id}] No message bus available to send message")
             raise RuntimeError(f"No message bus available to send message")
 
     def receive_message(self, message):
-        # Prevent memory leak with context size limit
+        # Validate message
+        if not all(field in message for field in ("sender", "recipient", "task")):
+            logging.warning(f"[{self.agent_id}] Invalid message format: {message}")
+            return
+            
+        if message["recipient"] != self.agent_id:
+            logging.warning(f"[{self.agent_id}] Message not for this agent: {message['recipient']}")
+            return
+
+        # Process message
         if len(self.context) >= self.max_context:
             self.context.pop(0)
         self.context.append(message)
 
-        task = message.get("task")
+        task = message["task"]
         payload = message.get("payload", {})
-        sender = message.get("sender")
+        sender = message["sender"]
 
-        print(
-            f"[{self.agent_id}] received task '{task}' from {sender} with payload: {payload}"
-        )
+        logging.info(f"[{self.agent_id}] received task '{task}' from {sender} with payload: {payload}")
+
         handler = self.task_routes.get(task)
 
         if handler:
-            handler(sender, payload)
+            try:
+                handler(sender, payload)
+            except Exception as e:
+                logging.error(f"[{self.agent_id}] Error in task '{task}': {e}")
         else:
             self.handle_unknown_task(task, payload)
 
     def handle_ping(self, sender, payload):
         if sender == self.agent_id:
-            print(f"[{self.agent_id}] Ignoring ping from self.")
+            logging.info(f"[{self.agent_id}] Task sent to self, ignoring.")
             return
         self.send_message(sender, "pong", {"status": "alive"})
 
@@ -57,7 +74,7 @@ class Agent:
         )
 
     def handle_unknown_task(self, task, payload):
-        print(f"[{self.agent_id}] Unknown task: {task}")
+        logging.info(f"[{self.agent_id}] Unknown task: {task}")
 
     def process_data(self, payload):
         if isinstance(payload, (list, tuple, dict)):
