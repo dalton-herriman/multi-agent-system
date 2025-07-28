@@ -2,9 +2,10 @@ import json
 
 
 class Agent:
-    def __init__(self, agent_id):
+    def __init__(self, agent_id, message_bus=None):
         self.agent_id = agent_id
         self.context = []
+        self.message_bus = message_bus
 
         # Map task names to handler methods
         self.task_routes = {
@@ -19,21 +20,26 @@ class Agent:
             "task": task,
             "payload": payload,
         }
-        self.message_handler(message)
+        
+        if self.message_bus:
+            self.message_bus.deliver(message)
+        else:
+            print(f"[{self.agent_id}] No message bus available to send message")
 
-    def message_handler(self, message):
-
+    def receive_message(self, message):
+        """Receive and process incoming messages"""
         # Store context
         self.context.append(message)
 
         task = message.get("task")
         payload = message.get("payload", {})
+        sender = message.get("sender")
 
-        print(f"[{self.agent_id}] received task '{task}' with payload: {payload}")
+        print(f"[{self.agent_id}] received task '{task}' from {sender} with payload: {payload}")
         handler = self.task_routes.get(task)
 
         if handler:
-            handler(message["from"], payload)
+            handler(sender, payload)
         else:
             self.handle_unknown_task(task, payload)
 
