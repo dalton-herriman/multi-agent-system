@@ -1,6 +1,17 @@
 import logging
 
-logging.basicConfig(level=logging.INFO)
+# Create module-specific logger
+logger = logging.getLogger(__name__)
+
+# Configure logger only if not already configured
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 
 class Agent:
@@ -28,17 +39,19 @@ class Agent:
         if self.message_bus:
             self.message_bus.deliver(message)
         else:
-            logging.error(f"[{self.agent_id}] No message bus available to send message")
+            logger.error(f"[{self.agent_id}] No message bus available to send message")
             raise RuntimeError(f"No message bus available to send message")
 
     def receive_message(self, message):
         # Validate message
         if not all(field in message for field in ("sender", "recipient", "task")):
-            logging.warning(f"[{self.agent_id}] Invalid message format: {message}")
+            logger.warning(f"[{self.agent_id}] Invalid message format: {message}")
             return
-            
+
         if message["recipient"] != self.agent_id:
-            logging.warning(f"[{self.agent_id}] Message not for this agent: {message['recipient']}")
+            logger.warning(
+                f"[{self.agent_id}] Message not for this agent: {message['recipient']}"
+            )
             return
 
         # Process message
@@ -50,7 +63,9 @@ class Agent:
         payload = message.get("payload", {})
         sender = message["sender"]
 
-        logging.info(f"[{self.agent_id}] received task '{task}' from {sender} with payload: {payload}")
+        logger.info(
+            f"[{self.agent_id}] received task '{task}' from {sender} with payload: {payload}"
+        )
 
         handler = self.task_routes.get(task)
 
@@ -58,13 +73,13 @@ class Agent:
             try:
                 handler(sender, payload)
             except Exception as e:
-                logging.error(f"[{self.agent_id}] Error in task '{task}': {e}")
+                logger.error(f"[{self.agent_id}] Error in task '{task}': {e}")
         else:
             self.handle_unknown_task(task, payload)
 
     def handle_ping(self, sender, payload):
         if sender == self.agent_id:
-            logging.info(f"[{self.agent_id}] Task sent to self, ignoring.")
+            logger.info(f"[{self.agent_id}] Task sent to self, ignoring.")
             return
         self.send_message(sender, "pong", {"status": "alive"})
 
@@ -74,7 +89,7 @@ class Agent:
         )
 
     def handle_unknown_task(self, task, payload):
-        logging.info(f"[{self.agent_id}] Unknown task: {task}")
+        logger.info(f"[{self.agent_id}] Unknown task: {task}")
 
     def process_data(self, payload):
         if isinstance(payload, (list, tuple, dict)):
