@@ -160,35 +160,40 @@ class AnthropicLLMInterface(LLMInterface):
 
 
 class MockLLMInterface(LLMInterface):
-    def __init__(self, model_name: str = "mock-model", temperature: float = 0.7, max_tokens: int = 1000):
+    def __init__(
+        self,
+        model_name: str = "mock-model",
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+    ):
         super().__init__(model_name, temperature, max_tokens)
         self.responses = {
             "ping": "I'm here!",
             "process_data": "Data processed successfully!",
             "analyze": "Based on my analysis, the data is good!",
-            "default": "I understand your request, and I will help you."
+            "default": "I understand your request, and I will help you.",
         }
 
     def generate(self, prompt: str, **kwargs) -> str:
         """Generate mock response based on prompt content."""
         prompt_lower = prompt.lower()
-        
+
         for key, response in self.responses.items():
             if key in prompt_lower:
                 return response
-        
+
         return self.responses["default"]
-    
+
     def generate_with_context(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """Generate mock response with context."""
         if not messages:
             return self.responses["default"]
-        
+
         last_message = messages[-1].get("content", "").lower()
         for key, response in self.responses.items():
             if key in last_message:
                 return response
-        
+
         return self.responses["default"]
 
 
@@ -197,10 +202,12 @@ def create_llm_interface(provider: str = "mock", **kwargs) -> LLMInterface:
     providers = {
         "openai": OpenAIInterface,
         "anthropic": AnthropicInterface,
-        "mock": MockLLMInterface
+        "mock": MockLLMInterface,
     }
-    
+
     if provider not in providers:
-        raise ValueError(f"Unknown LLM provider: {provider}. Available: {list(providers.keys())}")
-    
-    return providers[provider](**kwargs) 
+        raise ValueError(
+            f"Unknown LLM provider: {provider}. Available: {list(providers.keys())}"
+        )
+
+    return providers[provider](**kwargs)
