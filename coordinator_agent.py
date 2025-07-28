@@ -1,5 +1,6 @@
 from agent import Agent
 
+
 class CoordinatorAgent(Agent):
     def __init__(self, agent_id, message_bus):
         super().__init__(agent_id, message_bus)
