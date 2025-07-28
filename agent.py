@@ -1,5 +1,6 @@
 import json
 
+
 class Agent:
     def __init__(self, agent_id):
         self.agent_id = agent_id
@@ -16,10 +17,10 @@ class Agent:
             "sender": self.agent_id,
             "recipient": recipient,
             "task": task,
-            "payload": payload
+            "payload": payload,
         }
         pass
-    
+
     def message_handler(self, message):
 
         # Store context
@@ -35,7 +36,7 @@ class Agent:
             handler(message["from"], payload)
         else:
             self.handle_unknown_task(task, payload)
-    
+
     # === Handlers ===
     def handle_ping(self, sender, payload):
         self.send_message(sender, "pong", {"status": "alive"})
