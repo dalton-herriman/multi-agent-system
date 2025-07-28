@@ -80,10 +80,53 @@ class OpenAILLMInterface(LLMInterface):
             raise Exception(f"Error generating text with context: {e}")
         
         
-        
-
 class AnthropicLLMInterface(LLMInterface):
-    pass
+    """ Anthropic's API interface """
+    def __init__(self, model_name: str = "claude-3-5-sonnet-20240620", temperature: float = 0.7, max_tokens: int = 1000):
+        super().__init__(model_name, temperature, max_tokens)
+        self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        
+        try:
+            import anthropic
+            self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        except ImportError:
+            logger.error("Anthropic is not installed. Please install it with 'pip install anthropic'.")
+            raise ImportError("Anthropic is not installed. Please install it with 'pip install anthropic'.")
+        except Exception as e:
+            logger.error(f"Error initializing Anthropic client: {e}")
+            raise Exception(f"Error initializing Anthropic client: {e}")
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        """Generate text response using Anthropic."""
+        try:
+            response = self.client.messages.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                **kwargs
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"Error generating text: {e}")
+            raise Exception(f"Error generating text: {e}")
+        
+    async def generate_with_context(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        """Generate response with conversation context."""
+        try:
+            response = self.client.messages.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                **kwargs
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"Error generating text with context: {e}")
+            raise Exception(f"Error generating text with context: {e}")
+        
+        
 
 class MockLLMInterface(LLMInterface):
     pass
