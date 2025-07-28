@@ -1,7 +1,8 @@
 class Agent:
-    def __init__(self, agent_id, message_bus=None):
+    def __init__(self, agent_id, message_bus=None, max_context=100):
         self.agent_id = agent_id
         self.context = []
+        self.max_context = max_context
         self.message_bus = message_bus
         self.task_routes = self._init_task_routes()
 
@@ -22,9 +23,12 @@ class Agent:
         if self.message_bus:
             self.message_bus.deliver(message)
         else:
-            print(f"[{self.agent_id}] No message bus available to send message")
+            raise RuntimeError(f"No message bus available to send message")
 
     def receive_message(self, message):
+        # Prevent memory leak with context size limit
+        if len(self.context) >= self.max_context:
+            self.context.pop(0)
         self.context.append(message)
 
         task = message.get("task")
@@ -53,8 +57,8 @@ class Agent:
         print(f"[{self.agent_id}] Unknown task: {task}")
 
     def process_data(self, payload):
-        try:
+        if isinstance(payload, (list, tuple, dict)):
             item_count = len(payload)
-        except TypeError:
+        else:
             item_count = 0
         return {"summary": f"Processed {item_count} items"}

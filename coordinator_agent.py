@@ -8,5 +8,18 @@ class CoordinatorAgent(Agent):
 
     def handle_request(self, sender, payload):
         print(f"[{self.agent_id}] Received user request: {payload}")
-        # Example: Break into subtasks
-        self.send_message("research_agent", "process_data", payload)
+        subtasks = self.decompose_request(payload)
+        for subtask in subtasks:
+            agent = subtask.get("agent", "research_agent")
+            task = subtask.get("task", "process_data")
+            subpayload = subtask.get("payload", {})
+            self.send_message(agent, task, subpayload)
+
+    def decompose_request(self, payload):
+        """
+        Breaks a user request into subtasks.
+        Override or extend this method for custom decomposition logic.
+        Returns a list of dicts: {"agent": ..., "task": ..., "payload": ...}
+        """
+        # Default: treat the whole payload as a single process_data task
+        return [{"agent": "research_agent", "task": "process_data", "payload": payload}]
