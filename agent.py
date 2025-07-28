@@ -1,14 +1,12 @@
-import json
-
-
 class Agent:
     def __init__(self, agent_id, message_bus=None):
         self.agent_id = agent_id
         self.context = []
         self.message_bus = message_bus
+        self.task_routes = self._init_task_routes()
 
-        # Map task names to handler methods
-        self.task_routes = {
+    def _init_task_routes(self):
+        return {
             "ping": self.handle_ping,
             "process_data": self.handle_process_data,
         }
@@ -27,8 +25,6 @@ class Agent:
             print(f"[{self.agent_id}] No message bus available to send message")
 
     def receive_message(self, message):
-        """Receive and process incoming messages"""
-        # Store context
         self.context.append(message)
 
         task = message.get("task")
@@ -45,14 +41,17 @@ class Agent:
 
     # === Handlers ===
     def handle_ping(self, sender, payload):
-        self.send_message(sender, "pong", {"status": "alive"})
+        response_payload = {"status": "alive"}
+        self.send_message(sender, "pong", response_payload)
 
     def handle_process_data(self, sender, payload):
         result = self.process_data(payload)
-        self.send_message(sender, "data_processed", {"result": result})
+        response_payload = {"result": result}
+        self.send_message(sender, "data_processed", response_payload)
 
     def handle_unknown_task(self, task, payload):
         print(f"[{self.agent_id}] Unknown task: {task}")
 
     def process_data(self, payload):
-        return {"summary": f"Processed {len(payload)} items"}
+        item_count = len(payload) if hasattr(payload, '__len__') else 0
+        return {"summary": f"Processed {item_count} items"}
