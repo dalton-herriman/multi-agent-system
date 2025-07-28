@@ -1,3 +1,4 @@
+import logging
 from utils.logging_config import setup_logger, log_with_agent_id
 
 logger = setup_logger(__name__)
@@ -17,10 +18,10 @@ class Agent:
 
     def receive_message(self, message):
         if not all(field in message for field in ("sender", "recipient", "task")):
-            log_with_agent_id(logger, self.agent_id, logger.WARNING, f"Invalid message format: {message}")
+            log_with_agent_id(logger, self.agent_id, logging.WARNING, f"Invalid message format: {message}")
             return
         if message["recipient"] != self.agent_id:
-            log_with_agent_id(logger, self.agent_id, logger.WARNING, f"Message not for this agent: {message['recipient']}")
+            log_with_agent_id(logger, self.agent_id, logging.WARNING, f"Message not for this agent: {message['recipient']}")
             return
 
         self.context.append(message)
@@ -28,20 +29,20 @@ class Agent:
             self.context = self.context[-self._max_context:]
         
         task, payload, sender = message["task"], message.get("payload", {}), message["sender"]
-        log_with_agent_id(logger, self.agent_id, logger.INFO, f"received task '{task}' from {sender} with payload: {payload}")
+        log_with_agent_id(logger, self.agent_id, logging.INFO, f"received task '{task}' from {sender} with payload: {payload}")
 
         if handler := self.task_routes.get(task):
             try:
                 handler(sender, payload)
             except Exception as e:
                 error_type = "Invalid data" if isinstance(e, (ValueError, TypeError)) else "Error"
-                log_with_agent_id(logger, self.agent_id, logger.ERROR, f"{error_type} in task '{task}': {e}")
+                log_with_agent_id(logger, self.agent_id, logging.ERROR, f"{error_type} in task '{task}': {e}")
         else:
             self.handle_unknown_task(task, payload)
 
     def handle_ping(self, sender, payload):
         if sender == self.agent_id:
-            log_with_agent_id(logger, self.agent_id, logger.INFO, "Task sent to self, ignoring.")
+            log_with_agent_id(logger, self.agent_id, logging.INFO, "Task sent to self, ignoring.")
             return
         self.send_message(sender, "pong", {"status": "alive"})
 
@@ -49,7 +50,7 @@ class Agent:
         self.send_message(sender, "data_processed", {"result": self.process_data(payload)})
 
     def handle_unknown_task(self, task, payload):
-        log_with_agent_id(logger, self.agent_id, logger.INFO, f"Unknown task: {task}")
+        log_with_agent_id(logger, self.agent_id, logging.INFO, f"Unknown task: {task}")
 
     def process_data(self, payload):
         item_count = len(payload) if isinstance(payload, (list, tuple, dict)) else 0
