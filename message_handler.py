@@ -1,36 +1,25 @@
-import logging
+from typing import Dict, Any
+from utils.logging_config import setup_logger
 
-logger = logging.getLogger(__name__)
-
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+logger = setup_logger(__name__)
 
 
 class MessageBus:
     def __init__(self):
-        self.agents = {}
+        self.agents: Dict[str, Any] = {}
 
-    def register(self, agent):
+    def register(self, agent) -> None:
         self.agents[agent.agent_id] = agent
 
-    def deliver(self, message):
+    def deliver(self, message: Dict[str, Any]) -> None:
         recipient = message.get("recipient")
-        agent = self.agents.get(recipient)
-        if agent:
+        if agent := self.agents.get(recipient):
             agent.receive_message(message)
         else:
-            logger.warning(f"[MessageBus] Unknown recipient: {recipient}")
+            logger.warning(f"Unknown recipient: {recipient}")
 
-    def broadcast(self, message):
+    def broadcast(self, message: Dict[str, Any]) -> None:
         sender = message.get("sender")
         for agent_id, agent in self.agents.items():
             if agent_id != sender:
-                msg = message.copy()
-                msg["recipient"] = agent_id
-                agent.receive_message(msg)
+                agent.receive_message({**message, "recipient": agent_id})
