@@ -2,6 +2,7 @@ from utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 
+
 class MessageBus:
     def __init__(self):
         self.agents = {}
