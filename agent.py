@@ -19,7 +19,7 @@ class Agent:
             "task": task,
             "payload": payload,
         }
-        pass
+        self.message_handler(message)
 
     def message_handler(self, message):
 
