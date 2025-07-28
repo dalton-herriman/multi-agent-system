@@ -192,6 +192,15 @@ class MockLLMInterface(LLMInterface):
         return self.responses["default"]
 
 
-
-def create_llm_interface():
-    pass
+def create_llm_interface(provider: str = "mock", **kwargs) -> LLMInterface:
+    """Factory function to create LLM interface."""
+    providers = {
+        "openai": OpenAIInterface,
+        "anthropic": AnthropicInterface,
+        "mock": MockLLMInterface
+    }
+    
+    if provider not in providers:
+        raise ValueError(f"Unknown LLM provider: {provider}. Available: {list(providers.keys())}")
+    
+    return providers[provider](**kwargs) 
