@@ -1,0 +1,3 @@
+class LLMCoordinator(CoordinatorAgent):
+    pass
+
